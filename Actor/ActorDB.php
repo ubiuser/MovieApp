@@ -2,8 +2,7 @@
 
 namespace Actor;
 
-
-class ActorCollection
+class ActorDB
 {
     private $list = array(); // indexed by the unique Actor ids
     private $factory;
