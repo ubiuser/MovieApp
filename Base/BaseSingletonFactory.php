@@ -4,15 +4,18 @@ namespace Base;
 
 abstract class BaseSingletonFactory
 {
-    public final static function getInstance() {
+    final public static function getInstance()
+    {
         static $instance = null;
-        if (null === $instance) {
+        if (null === $instance)
             $instance = new static();
-        }
+
         return $instance;
     }
 
-    public final function __construct() { }
+    final public function __construct()
+    {
+    }
 
-    protected abstract function create($name, $date, $time);
+    abstract protected function create($name, $date, $time);
 }

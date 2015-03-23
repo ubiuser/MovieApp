@@ -16,16 +16,14 @@ abstract class BaseEntity
         $this->id = $id;
     }
 
-    public final function getId() { return $this->id; }
+    final public function getId() { return $this->id; }
 
-    protected abstract function getAll();
-    protected final function _getAll($objVars)
+    abstract protected function getAll();
+    final protected function _getAll($objVars)
     {
         $valueArray = array();
         foreach ($objVars as $var => $value)
-        {
             $valueArray[$var] = $value;
-        }
 
         return json_encode($valueArray, JSON_PRETTY_PRINT);
     }

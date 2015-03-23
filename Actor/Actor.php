@@ -24,8 +24,16 @@ class Actor extends BaseEntity
         $this->birthday = $birthday;
     }
 
-    public function getName() { return $this->name; }
-    public function getBirthday() { return $this->birthday; }
+    public function getName()
+    {
+        return $this->name;
+    }
+
+    public function getBirthday()
+    {
+        return $this->birthday;
+    }
+
     public function getAll()
     {
         return $this->_getAll(get_object_vars($this));

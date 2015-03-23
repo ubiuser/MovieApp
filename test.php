@@ -2,11 +2,11 @@
 
 include_once '\Movie\MovieSingletonFactory.php';
 include_once '\Actor\ActorSingletonFactory.php';
-include_once '\Actor\ActorCollection.php';
+include_once '\Actor\ActorDB.php';
 
 use Movie\MovieSingletonFactory;
 use Actor\ActorSingletonFactory;
-use Actor\ActorCollection;
+use Actor\ActorDB;
 
 // create Movie factory and add Movies
 $movieFactory = MovieSingletonFactory::getInstance();
@@ -15,7 +15,7 @@ $movie2 = $movieFactory->create("Movie_1", "2000-01-02", "02:00");
 
 // create ActorCollection and add Actors
 $actorFactory = ActorSingletonFactory::getInstance();
-$actorCollection1 = new ActorCollection($actorFactory);
+$actorCollection1 = new ActorDB($actorFactory);
 $actorCollection1->addActor("Actor_0", "2001-02-01"); // id = 0
 $actorCollection1->addActor("Actor_1", "2001-02-02"); // id = 1
 $actorCollection1->addActor("Actor_2", "2001-02-03"); // id = 2
