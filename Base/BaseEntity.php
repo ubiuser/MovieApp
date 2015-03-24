@@ -2,29 +2,37 @@
 
 namespace Base;
 
-include_once '\Utils\Helper.php';
-use Utils\Helper;
+set_include_path(get_include_path() . PATH_SEPARATOR . '../');
+spl_autoload_extensions('.php');
+spl_autoload_register();
 
-abstract class BaseEntity
+use \Utils\Helper;
+use Exception;
+
+abstract class BaseEntity implements \JsonSerializable
 {
     protected $id;
 
     protected function __construct($id)
     {
-        Helper::isValidInt(get_called_class(), $id);
+        try {
+            Helper::isValidInt($id);
+        } catch (Exception $e) {
+            throw new Exception("Error in " . get_called_class() . " object creation; " . $e->getMessage());
+        }
 
         $this->id = $id;
     }
 
-    final public function getId() { return $this->id; }
-
-    abstract protected function getAll();
-    final protected function _getAll($objVars)
+    final public function getId()
     {
-        $valueArray = array();
-        foreach ($objVars as $var => $value)
-            $valueArray[$var] = $value;
-
-        return json_encode($valueArray, JSON_PRETTY_PRINT);
+        return $this->id;
     }
+
+    final public function getAllJSON()
+    {
+        return json_encode($this);
+    }
+
+    abstract public function jsonSerialize();
 }

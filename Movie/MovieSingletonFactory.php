@@ -2,10 +2,12 @@
 
 namespace Movie;
 
-include_once '\Base\BaseSingletonFactory.php';
-include_once 'Movie.php';
+set_include_path(get_include_path() . PATH_SEPARATOR . '../');
+spl_autoload_extensions('.php');
+spl_autoload_register();
 
-use Base\BaseSingletonFactory;
+use \Base\BaseSingletonFactory;
+use Exception;
 
 class MovieSingletonFactory extends BaseSingletonFactory
 {
@@ -13,6 +15,11 @@ class MovieSingletonFactory extends BaseSingletonFactory
 
     public function create($name, $date, $runtime)
     {
-        return new Movie(self::$id++, $name, $date, $runtime);
+        try {
+            return new Movie(self::$id++, $name, $date, $runtime);
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
+        }
     }
 }

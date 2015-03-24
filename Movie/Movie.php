@@ -2,11 +2,14 @@
 
 namespace Movie;
 
-include_once '\Utils\Helper.php';
-include_once '\Base\BaseEntity.php';
+set_include_path(get_include_path() . PATH_SEPARATOR . '../');
+spl_autoload_extensions('.php');
+spl_autoload_register();
 
-use Utils\Helper;
-use Base\BaseEntity;
+use \Utils\Helper;
+use \Base\BaseEntity;
+use \Actor\ActorDB;
+use Exception;
 
 class Movie extends BaseEntity
 {
@@ -14,18 +17,24 @@ class Movie extends BaseEntity
     private $runtime;
     private $release;
     private $cast = array();
+    private $actorDB;
 
-    public function __construct($id, $title, $release, $runtime)
+    public function __construct($id, $title, $release, $runtime, ActorDB $actorDB = null)
     {
         parent::__construct($id);
 
-        Helper::isValidString(__CLASS__, $title);
-        Helper::isValidDate(__CLASS__, $release);
-        Helper::isValidRuntime(__CLASS__, $runtime);
+        try {
+            Helper::isValidString($title);
+            Helper::isValidDate($release);
+            Helper::isValidRuntime($runtime);
+        } catch (Exception $e) {
+            throw new Exception("Error in " . __CLASS__ . " object creation; " . $e->getMessage());
+        }
 
         $this->title = $title;
-        $this->release = $release;
-        $this->runtime = $runtime;
+        $this->release = new \DateTime($release);
+        $this->runtime = new \DateTime($runtime);
+        $this->actorDB = $actorDB;
     }
 
     public function getTitle()
@@ -33,58 +42,161 @@ class Movie extends BaseEntity
         return $this->title;
     }
 
-    public function getRuntime()
+    public function setTitle($title)
     {
-        return $this->runtime;
+        try {
+            Helper::isValidString($title);
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
+        }
+
+        $this->title = $title;
     }
 
-    public function getRelease()
+    public function assignActorDB(ActorDB $actorDB)
     {
-        return $this->release;
+        $this->actorDB = $actorDB;
     }
 
-    public function getAll()
+    public function addCharacter($actorId, $role)
     {
-        return $this->_getAll(get_object_vars($this));
+        try {
+            Helper::isValidInt($actorId);
+            Helper::isValidString($role);
+
+            // role must be unique in Movie
+            foreach ($this->cast as $key => $value)
+                if ($value['role'] == $role) {
+                    throw new Exception("Role already exists: " . $role);
+                }
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
+        }
+
+        $this->cast[] = ["actorId" => $actorId, "role" => $role];
     }
 
-    public function addActorIdList($actorList)
+    public function getCastOrderedList()
     {
-        $this->cast = array_unique(array_merge($this->cast, $actorList));
+        try {
+            $actorObjList = $this->getCastDetails();
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
+        }
+
+        usort($actorObjList, function($a, $b)
+        {
+            if (!is_null($a->getBirthday()) and !is_null($b->getBirthday())) {
+                if ($a->getBirthday() == $b->getBirthday())
+                    return 0;
+
+                return ($a->getBirthday() < $b->getBirthday()) ? -1 : 1;
+            }
+        });
+
+        // we have the full list ordered in $actorObjList
+        // calculate age and return only [name, age] without duplicates
+        $finalList = array();
+
+        foreach ($actorObjList as $key => $value) {
+            $name = $value->getName();
+            $age = Helper::getAge($value->getBirthday());
+
+            if (!is_null($name) and $age > 0)
+                $finalList[] = ['actorName' => $value->getName(), 'age' => Helper::getAge($value->getBirthday())];
+        }
+
+        return array_map("unserialize", array_unique(array_map("serialize", $finalList)));
     }
 
-    private function getCastDetails($actorCollection)
+    private function getCastDetails()
     {
+        if (is_null($this->actorDB))
+            throw new Exception("No actor database found!");
+
         $actorDetailedObjList = array();
-        foreach ($this->cast as $key => $value)
-            $actorDetailedObjList[] = $actorCollection->getItem($value);
+        foreach ($this->cast as $key => $value) {
+            $actorObj = $this->actorDB->getActorObj($value["actorId"]);
+            if (!is_null($actorObj))
+                $actorDetailedObjList[] = $actorObj;
+        }
 
         return $actorDetailedObjList;
     }
 
-    public function getCastOrderedList($actorCollection)
+    public function jsonSerialize()
     {
-        $actorObjList = $this->getCastDetails($actorCollection);
+        try {
+            return ['id' => $this->id, 'title' => $this->title, 'release' => $this->getRelease(), 'runtime' => $this->getRuntime(), 'cast' => $this->getCharacters()];
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
+        }
+    }
 
-        usort($actorObjList, function($a, $b)
-        {
-            if (method_exists($a, "getBirthday") and method_exists($b, "getBirthday")) { // check if Actor object exists
-                if ($a->getBirthday() == $b->getBirthday())
-                    return 0;
+    public function getRelease()
+    {
+        return Helper::getFormattedDate($this->release);
+    }
 
-                return ($a->getBirthday() < $b->getBirthday()) ? 1 : -1;
-            }
-        });
-
-
-        $actorJSONList = array();
-        foreach ($actorObjList as $key => $value) {
-            if (method_exists($value, "getAll"))
-                $actorJSONList[] = $value->getAll();
-            else
-                $actorJSONList[] = json_encode($value, JSON_PRETTY_PRINT); // remove this to exclude missing actors from final result list
+    public function setRelease($year, $month, $day)
+    {
+        try {
+            Helper::isValidInt($year);
+            Helper::isValidInt($month);
+            Helper::isValidInt($day);
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
         }
 
-        return $actorJSONList;
+        // future release announcements are valid -> no need to check 'age'
+        $this->release->setDate($year, $month, $day);
+    }
+
+    public function getRuntime()
+    {
+        return Helper::getFormattedTime($this->runtime);
+    }
+
+    public function setRuntime($hour , $minute)
+    {
+        try {
+            Helper::isValidInt($hour);
+            Helper::isValidInt($minute);
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
+        }
+
+        $this->runtime->setTime($hour, $minute);
+    }
+
+    private function getCharacters()
+    {
+        $characters = array();
+
+        foreach ($this->cast as $key => $value) {
+            $characters[] = ['actorName' => $this->getActorName($value['actorId']),
+                            'role' => $value['role']];
+        }
+
+        return $characters;
+    }
+
+    private function getActorName($id)
+    {
+        if (is_null($this->actorDB))
+            throw new Exception("No actor database found!");
+
+        $actor = $this->actorDB->getActorObj($id);
+
+        if (!is_null($actor))
+            return $actor->getName();
+        else
+            return "MISSING";
     }
 }

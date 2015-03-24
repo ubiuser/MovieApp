@@ -2,10 +2,12 @@
 
 namespace Actor;
 
-include_once '\Base\BaseSingletonFactory.php';
-include_once 'Actor.php';
+set_include_path(get_include_path() . PATH_SEPARATOR . '../');
+spl_autoload_extensions('.php');
+spl_autoload_register();
 
-use Base\BaseSingletonFactory;
+use \Base\BaseSingletonFactory;
+use Exception;
 
 class ActorSingletonFactory extends BaseSingletonFactory
 {
@@ -13,6 +15,11 @@ class ActorSingletonFactory extends BaseSingletonFactory
 
     public function create($name, $birthday, $arg3 = null)
     {
-        return new Actor(self::$id++, $name, $birthday);
+        try {
+            return new Actor(self::$id++, $name, $birthday);
+        } catch (Exception $e) {
+            var_dump("Exception at " . __FILE__ . ":" . __LINE__ . " => " . $e->getMessage());
+            exit;
+        }
     }
 }
